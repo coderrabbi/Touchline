@@ -1,0 +1,9 @@
+import {describe,it,expect} from 'vitest';
+import {roundRobin,calculateStandings,winner,distributeGroups} from '../src/services/competition-engine.js';
+describe('Competition rules',()=>{
+ it.each([2,3,4,5,8,16])('creates every pairing once for %i players without double booking a round',count=>{const games=roundRobin(count);expect(games).toHaveLength(count*(count-1)/2);expect(new Set(games.map(g=>[g.home,g.away].sort((a,b)=>a-b).join('-'))).size).toBe(games.length);for(const round of new Set(games.map(g=>g.round))){const players=games.filter(g=>g.round===round).flatMap(g=>[g.home,g.away]);expect(new Set(players).size).toBe(players.length)}});
+ it('creates reverse fixtures for double round robin',()=>{const games=roundRobin(4,true);expect(games).toHaveLength(12);for(const g of games.filter(g=>g.leg===1))expect(games).toContainEqual({...g,home:g.away,away:g.home,round:g.round+3,leg:2})});
+ it('calculates draws, goals and configurable points from official results',()=>{const table=calculateStandings(['a','b','c'],[{homeId:'a',awayId:'b',homeScore:3,awayScore:1},{homeId:'b',awayId:'c',homeScore:2,awayScore:2}],{win:5,draw:2,loss:0});expect(table[0]).toMatchObject({participantId:'a',played:1,wins:1,points:5,goalDifference:2});expect(table.find(r=>r.participantId==='b')).toMatchObject({played:2,losses:1,draws:1,goalsFor:3,goalsAgainst:5,points:2})});
+ it('requires deciding penalties for knockout draws',()=>{expect(winner('a','b',2,1,true)).toBe('a');expect(winner('a','b',1,1,false)).toBeNull();expect(()=>winner('a','b',1,1,true)).toThrow();expect(winner('a','b',1,1,true,4,5)).toBe('b')});
+ it('distributes groups without duplicating players',()=>{const groups=distributeGroups(Array.from({length:10},(_,i)=>i),3);expect(groups.map(g=>g.length).sort()).toEqual([3,3,4]);expect(new Set(groups.flat()).size).toBe(10)});
+});

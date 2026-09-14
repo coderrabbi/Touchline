@@ -1,0 +1,1 @@
+export default function Loading(){return <div className="panel" role="status" aria-label="Loading content"><div className="skeleton" style={{height:100}}/><div className="skeleton"/><div className="skeleton"/><span className="muted small">Loading your arena…</span></div>}

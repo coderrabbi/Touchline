@@ -1,0 +1,1 @@
+import fs from 'node:fs';const f='apps/api/src/app.ts';let s=fs.readFileSync(f,'utf8');if(!s.includes('operationsRoutes'))s="import {operationsRoutes} from './routes/operations.routes.js';\n"+s.replace("app.use('/api/v1',catalogRoutes);","app.use('/api/v1',catalogRoutes);app.use('/api/v1',operationsRoutes);");fs.writeFileSync(f,s);

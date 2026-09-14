@@ -1,0 +1,492 @@
+generator client {
+  provider = "prisma-client"
+  output = "../src/generated/prisma"
+}
+datasource db {
+  provider = "postgresql"
+}
+enum Role {
+  PLAYER
+  ADMIN
+  SUPER_ADMIN
+}
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+}
+enum Platform {
+  PLAYSTATION
+  XBOX
+  STEAM_PC
+  MOBILE
+}
+enum TournamentFormat {
+  LEAGUE
+  GROUP_STAGE
+  KNOCKOUT
+  GROUP_KNOCKOUT
+}
+enum TournamentStatus {
+  DRAFT
+  REGISTRATION_OPEN
+  REGISTRATION_CLOSED
+  UPCOMING
+  ONGOING
+  COMPLETED
+  CANCELLED
+}
+enum Visibility {
+  PUBLIC
+  UNLISTED
+  PRIVATE
+}
+enum RegistrationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+enum MatchStatus {
+  SCHEDULED
+  LIVE
+  RESULT_SUBMITTED
+  DISPUTED
+  COMPLETED
+  CANCELLED
+  WALKOVER
+}
+enum Stage {
+  LEAGUE
+  GROUP
+  KNOCKOUT
+  THIRD_PLACE
+  FINAL
+}
+enum SubmissionStatus {
+  PENDING
+  CONFIRMED
+  DISPUTED
+  RESOLVED
+  SUPERSEDED
+}
+enum UploadPurpose {
+  AVATAR
+  TOURNAMENT_LOGO
+  TOURNAMENT_BANNER
+  MATCH_EVIDENCE
+}
+model User {
+  deletedAt DateTime?
+  id String @id @default(uuid()) @db.Uuid
+  name String @db.VarChar(80)
+  username String @unique @db.VarChar(24)
+  email String @unique @db.VarChar(254)
+  passwordHash String
+  role Role @default(PLAYER)
+  status UserStatus @default(ACTIVE)
+  restrictionReason String?
+  suspendedUntil DateTime?
+  emailVerified Boolean @default(false)
+  tokenVersion Int @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  profile Profile?
+  tournaments Tournament[] @relation("TournamentCreator")
+  registrations TournamentRegistration[]
+  participants TournamentParticipant[]
+  submissions MatchResultSubmission[] @relation("SubmittedBy")
+  reviewedSubmissions MatchResultSubmission[] @relation("ReviewedBy")
+  notifications Notification[]
+  announcements Announcement[]
+  achievements UserAchievement[]
+  auditLogs AuditLog[]
+  refreshTokens RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  uploads Upload[]
+  chatMessages ChatMessage[]
+  @@index([status, createdAt])
+  @@index([role])
+}
+model Profile {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @unique @db.Uuid
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  country String @db.Char(2)
+  platform Platform
+  efootballUsername String @db.VarChar(40)
+  efootballUserId String? @db.VarChar(40)
+  platformUsername String? @db.VarChar(60)
+  timezone String @default("UTC")
+  avatarUrl String?
+  publicHistory Boolean @default(true)
+  matchReminders Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([platform,country])
+}
+model EfootballUsernameClaim {
+  key String @id
+  profileId String? @db.Uuid
+}
+model Tournament {
+  id String @id @default(uuid()) @db.Uuid
+  name String @db.VarChar(120)
+  slug String @unique @db.VarChar(140)
+  description String
+  logoUrl String?
+  bannerUrl String?
+  format TournamentFormat
+  platform Platform
+  region String @default("Global")
+  minPlayers Int @default(4)
+  maxPlayers Int
+  registrationStartsAt DateTime
+  registrationDeadline DateTime
+  startsAt DateTime
+  endsAt DateTime?
+  matchDuration Int @default(10)
+  rules String
+  prizeInfo String?
+  entryFee Decimal @default(0) @db.Decimal(10,2)
+  currency String @default("USD") @db.Char(3)
+  numberOfGroups Int @default(0)
+  advancingPerGroup Int @default(2)
+  homeAwayLegs Boolean @default(false)
+  thirdPlaceEnabled Boolean @default(false)
+  pointsWin Int @default(3)
+  pointsDraw Int @default(1)
+  pointsLoss Int @default(0)
+  goalDifferenceTiebreak Boolean @default(true)
+  headToHeadTiebreak Boolean @default(true)
+  manualQualification Boolean @default(true)
+  manualApproval Boolean @default(false)
+  withdrawalAllowed Boolean @default(true)
+  participantListPublic Boolean @default(true)
+  status TournamentStatus @default(DRAFT)
+  visibility Visibility @default(PUBLIC)
+  publishedAt DateTime?
+  currentStage Stage?
+  version Int @default(0)
+  createdById String @db.Uuid
+  createdBy User @relation("TournamentCreator",fields:[createdById],references:[id],onDelete:Restrict)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  registrations TournamentRegistration[]
+  participants TournamentParticipant[]
+  groups TournamentGroup[]
+  matches Match[]
+  standings Standing[]
+  announcements Announcement[]
+  winners TournamentWinner[]
+  community TournamentCommunity?
+  chatMessages ChatMessage[]
+  @@index([status,visibility,startsAt])
+  @@index([platform,format])
+  @@index([createdById])
+}
+model TournamentRegistration {
+  id String @id @default(uuid()) @db.Uuid
+  tournamentId String @db.Uuid
+  userId String @db.Uuid
+  tournament Tournament @relation(fields:[tournamentId],references:[id],onDelete:Cascade)
+  user User @relation(fields:[userId],references:[id],onDelete:Restrict)
+  status RegistrationStatus @default(PENDING)
+  rulesAcceptedAt DateTime
+  reviewedAt DateTime?
+  reviewReason String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([tournamentId,userId])
+  @@index([tournamentId,status])
+  @@index([userId,status])
+}
+model TournamentParticipant {
+  id String @id @default(uuid()) @db.Uuid
+  tournamentId String @db.Uuid
+  userId String @db.Uuid
+  tournament Tournament @relation(fields:[tournamentId],references:[id],onDelete:Cascade)
+  user User @relation(fields:[userId],references:[id],onDelete:Restrict)
+  seed Int?
+  checkedInAt DateTime?
+  eliminatedAt DateTime?
+  qualified Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  memberships GroupMember[]
+  homeMatches Match[] @relation("HomePlayer")
+  awayMatches Match[] @relation("AwayPlayer")
+  wonMatches Match[] @relation("MatchWinner")
+  standings Standing[]
+  tournamentWins TournamentWinner[]
+  @@unique([tournamentId,userId])
+  @@unique([tournamentId,seed])
+  @@index([userId])
+}
+model TournamentGroup {
+  id String @id @default(uuid()) @db.Uuid
+  tournamentId String @db.Uuid
+  tournament Tournament @relation(fields:[tournamentId],references:[id],onDelete:Cascade)
+  name String @db.VarChar(40)
+  position Int
+  qualificationConfirmedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  members GroupMember[]
+  matches Match[]
+  standings Standing[]
+  @@unique([tournamentId,name])
+  @@unique([tournamentId,position])
+}
+model GroupMember {
+  id String @id @default(uuid()) @db.Uuid
+  groupId String @db.Uuid
+  participantId String @unique @db.Uuid
+  group TournamentGroup @relation(fields:[groupId],references:[id],onDelete:Cascade)
+  participant TournamentParticipant @relation(fields:[participantId],references:[id],onDelete:Cascade)
+  createdAt DateTime @default(now())
+  @@unique([groupId,participantId])
+}
+model Match {
+  matchNumber Int @unique @default(autoincrement())
+  id String @id @default(uuid()) @db.Uuid
+  tournamentId String @db.Uuid
+  tournament Tournament @relation(fields:[tournamentId],references:[id],onDelete:Cascade)
+  stage Stage
+  round Int
+  position Int
+  leg Int @default(1)
+  groupId String? @db.Uuid
+  group TournamentGroup? @relation(fields:[groupId],references:[id],onDelete:Restrict)
+  homeId String? @db.Uuid
+  awayId String? @db.Uuid
+  winnerId String? @db.Uuid
+  home TournamentParticipant? @relation("HomePlayer",fields:[homeId],references:[id],onDelete:Restrict)
+  away TournamentParticipant? @relation("AwayPlayer",fields:[awayId],references:[id],onDelete:Restrict)
+  winner TournamentParticipant? @relation("MatchWinner",fields:[winnerId],references:[id],onDelete:Restrict)
+  scheduledAt DateTime?
+  homeScore Int?
+  awayScore Int?
+  homePenalties Int?
+  awayPenalties Int?
+  status MatchStatus @default(SCHEDULED)
+  adminNotes String?
+  completedAt DateTime?
+  nextMatchId String? @db.Uuid
+  nextSlot Int?
+  nextMatch Match? @relation("NextMatch",fields:[nextMatchId],references:[id],onDelete:SetNull)
+  previousMatches Match[] @relation("NextMatch")
+  loserMatchId String? @db.Uuid
+  loserSlot Int?
+  loserMatch Match? @relation("LoserMatch",fields:[loserMatchId],references:[id],onDelete:SetNull)
+  loserSources Match[] @relation("LoserMatch")
+  version Int @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  submissions MatchResultSubmission[]
+  coordination MatchCoordination?
+  @@unique([tournamentId,stage,round,position,leg])
+  @@index([tournamentId,status,scheduledAt])
+  @@index([homeId,status])
+  @@index([awayId,status])
+  @@index([groupId])
+}
+model MatchResultSubmission {
+  id String @id @default(uuid()) @db.Uuid
+  matchId String @db.Uuid
+  match Match @relation(fields:[matchId],references:[id],onDelete:Cascade)
+  submittedById String @db.Uuid
+  submittedBy User @relation("SubmittedBy",fields:[submittedById],references:[id],onDelete:Restrict)
+  homeScore Int
+  awayScore Int
+  homePenalties Int?
+  awayPenalties Int?
+  evidenceId String? @db.Uuid
+  evidence Upload? @relation("SubmissionEvidence",fields:[evidenceId],references:[id],onDelete:Restrict)
+  disputeEvidenceId String? @db.Uuid
+  disputeEvidence Upload? @relation("DisputeEvidence",fields:[disputeEvidenceId],references:[id],onDelete:Restrict)
+  status SubmissionStatus @default(PENDING)
+  disputeReason String?
+  decisionReason String?
+  reviewedById String? @db.Uuid
+  reviewedBy User? @relation("ReviewedBy",fields:[reviewedById],references:[id],onDelete:Restrict)
+  reviewedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([matchId,status])
+  @@index([status,createdAt])
+}
+model Standing {
+  id String @id @default(uuid()) @db.Uuid
+  tournamentId String @db.Uuid
+  tournament Tournament @relation(fields:[tournamentId],references:[id],onDelete:Cascade)
+  participantId String @db.Uuid
+  participant TournamentParticipant @relation(fields:[participantId],references:[id],onDelete:Cascade)
+  groupId String? @db.Uuid
+  group TournamentGroup? @relation(fields:[groupId],references:[id],onDelete:Cascade)
+  scope String @default("overall")
+  played Int @default(0)
+  wins Int @default(0)
+  draws Int @default(0)
+  losses Int @default(0)
+  goalsFor Int @default(0)
+  goalsAgainst Int @default(0)
+  goalDifference Int @default(0)
+  points Int @default(0)
+  manualRank Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([tournamentId,participantId,scope])
+  @@index([tournamentId,scope,points])
+}
+model Notification {
+  dedupeKey String? @unique
+  id String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  title String @db.VarChar(120)
+  message String
+  type String @db.VarChar(60)
+  link String?
+  readAt DateTime?
+  createdAt DateTime @default(now())
+  @@index([userId,readAt,createdAt])
+}
+model Announcement {
+  id String @id @default(uuid()) @db.Uuid
+  tournamentId String? @db.Uuid
+  tournament Tournament? @relation(fields:[tournamentId],references:[id],onDelete:Cascade)
+  authorId String @db.Uuid
+  author User @relation(fields:[authorId],references:[id],onDelete:Restrict)
+  title String @db.VarChar(120)
+  message String
+  publishedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([tournamentId,publishedAt])
+}
+model TournamentWinner {
+  id String @id @default(uuid()) @db.Uuid
+  tournamentId String @db.Uuid
+  participantId String @db.Uuid
+  tournament Tournament @relation(fields:[tournamentId],references:[id],onDelete:Cascade)
+  participant TournamentParticipant @relation(fields:[participantId],references:[id],onDelete:Restrict)
+  place Int
+  createdAt DateTime @default(now())
+  @@unique([tournamentId,place])
+  @@unique([tournamentId,participantId])
+}
+model Achievement {
+  id String @id @default(uuid()) @db.Uuid
+  code String @unique
+  name String
+  description String
+  iconUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  awards UserAchievement[]
+}
+model UserAchievement {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  achievementId String @db.Uuid
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  achievement Achievement @relation(fields:[achievementId],references:[id],onDelete:Cascade)
+  awardedAt DateTime @default(now())
+  @@unique([userId,achievementId])
+}
+model AuditLog {
+  id String @id @default(uuid()) @db.Uuid
+  actorId String? @db.Uuid
+  actor User? @relation(fields:[actorId],references:[id],onDelete:SetNull)
+  action String
+  entityType String
+  entityId String?
+  metadata Json?
+  ip String?
+  createdAt DateTime @default(now())
+  @@index([entityType,entityId,createdAt])
+  @@index([actorId,createdAt])
+}
+model RefreshToken {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  familyId String @db.Uuid
+  tokenHash String @unique
+  csrfHash String
+  expiresAt DateTime
+  revokedAt DateTime?
+  replacedById String? @db.Uuid
+  createdAt DateTime @default(now())
+  @@index([userId,expiresAt])
+  @@index([familyId])
+}
+model PasswordResetToken {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  tokenHash String @unique
+  expiresAt DateTime
+  consumedAt DateTime?
+  createdAt DateTime @default(now())
+  @@index([userId,expiresAt])
+}
+model EmailVerificationToken {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  tokenHash String @unique
+  expiresAt DateTime
+  consumedAt DateTime?
+  createdAt DateTime @default(now())
+  @@index([userId,expiresAt])
+}
+model Upload {
+  id String @id @default(uuid()) @db.Uuid
+  ownerId String @db.Uuid
+  owner User @relation(fields:[ownerId],references:[id],onDelete:Restrict)
+  purpose UploadPurpose
+  provider String
+  objectKey String @unique
+  url String
+  mimeType String
+  sizeBytes Int
+  createdAt DateTime @default(now())
+  submissions MatchResultSubmission[] @relation("SubmissionEvidence")
+  disputes MatchResultSubmission[] @relation("DisputeEvidence")
+  @@index([ownerId,purpose])
+}
+model TournamentCommunity {
+  tournamentId String @id @db.Uuid
+  tournament Tournament @relation(fields:[tournamentId],references:[id],onDelete:Cascade)
+  groupLink String? @db.VarChar(2048)
+}
+model ChatMessage {
+  id String @id @default(uuid()) @db.Uuid
+  tournamentId String @db.Uuid
+  tournament Tournament @relation(fields:[tournamentId],references:[id],onDelete:Cascade)
+  authorId String @db.Uuid
+  author User @relation(fields:[authorId],references:[id],onDelete:Cascade)
+  clientId String @db.Uuid
+  body String @db.VarChar(1000)
+  createdAt DateTime @default(now())
+  @@unique([authorId,clientId])
+  @@index([tournamentId,createdAt,id])
+}
+
+model MatchCoordination {
+  matchId String @id @db.Uuid
+  match Match @relation(fields:[matchId],references:[id],onDelete:Cascade)
+  homeReadyAt DateTime?
+  awayReadyAt DateTime?
+  lobbyDetails String? @db.VarChar(1000)
+  noShowReporterId String? @db.Uuid
+  noShowReason String? @db.VarChar(2000)
+  noShowReportedAt DateTime?
+  decision String? @db.VarChar(2000)
+  updatedAt DateTime @updatedAt
+}
+
+

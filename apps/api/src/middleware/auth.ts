@@ -1,0 +1,10 @@
+import type {RequestHandler} from 'express';
+import type {Role} from '@touchline/shared';
+import {prisma} from '../config/prisma.js';
+import {env} from '../config/env.js';
+import {AppError} from '../utils/errors.js';
+import {csrfFor,secureEqual,verifyToken} from '../utils/tokens.js';
+export const requireAuth:RequestHandler=async(req,_res,next)=>{try{const raw:unknown=req.cookies?.tl_access;if(typeof raw!=='string')throw new AppError(401,'Please log in to continue.');const c=verifyToken(raw,'access');const user=await prisma.user.findUnique({where:{id:c.sub},select:{id:true,role:true,status:true,tokenVersion:true}});if(!user||user.tokenVersion!==c.version)throw new AppError(401,'Please log in again.');if(user.status!=='ACTIVE')throw new AppError(403,'This account is restricted.');const active=await prisma.refreshToken.findFirst({where:{userId:user.id,familyId:c.familyId,revokedAt:null,expiresAt:{gt:new Date()}},select:{id:true}});if(!active)throw new AppError(401,'Please log in again.');req.auth={userId:user.id,role:user.role,familyId:c.familyId};next()}catch(e){next(e)}};
+export function requireRole(...roles:Role[]):RequestHandler{return(req,_res,next)=>{if(!req.auth)return next(new AppError(401,'Please log in.'));if(!roles.includes(req.auth.role))return next(new AppError(403,'You do not have permission to access this resource.'));next()}}
+export const trustedOrigin:RequestHandler=(req,_res,next)=>{if(['GET','HEAD','OPTIONS'].includes(req.method))return next();if(req.get('origin')!==new URL(env.FRONTEND_URL).origin)return next(new AppError(403,'Request origin is not permitted.'));next()};
+export const requireCsrf:RequestHandler=(req,_res,next)=>{try{let familyId=req.auth?.familyId;if(!familyId){const raw:unknown=req.cookies?.tl_refresh;if(typeof raw!=='string')throw new AppError(401,'Please log in.');familyId=verifyToken(raw,'refresh').familyId}const supplied=req.get('x-csrf-token');if(!supplied||!secureEqual(supplied,csrfFor(familyId)))throw new AppError(403,'Security token is missing or invalid. Refresh and try again.');next()}catch(e){next(e)}};

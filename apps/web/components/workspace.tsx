@@ -1,0 +1,3 @@
+import Link from 'next/link';
+import {LayoutDashboard,UserRound,Settings,ShieldCheck} from 'lucide-react';
+export function Workspace({children,admin=false}:{children:React.ReactNode;admin?:boolean}){return <div className="workspace"><aside className="sidebar" aria-label="Workspace navigation"><Link href="/dashboard"><LayoutDashboard size={18}/>My arena</Link><Link href="/dashboard/tournaments">My tournaments</Link><Link href="/dashboard/matches">My matches</Link><Link href="/dashboard/notifications">Notifications</Link><Link href="/dashboard/profile"><UserRound size={18}/>Profile</Link><Link href="/dashboard/settings"><Settings size={18}/>Settings</Link>{admin&&<Link href="/admin"><ShieldCheck size={18}/>Administrator</Link>}</aside><div>{children}</div></div>}

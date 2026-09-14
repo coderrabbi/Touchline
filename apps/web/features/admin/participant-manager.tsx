@@ -1,0 +1,8 @@
+'use client';
+import {useQuery} from '@tanstack/react-query';
+import {useState} from 'react';
+import {api} from '@/lib/api';
+import type {Participant} from '@/lib/competition';
+import {Button} from '@/components/ui/button';
+import {Feedback} from '@/components/ui/feedback';
+export function ParticipantManager({id}:{id:string}){const {data,refetch}=useQuery({queryKey:['manage',id],queryFn:()=>api<{participants:Participant[]}>('/admin/tournaments/'+id)}),[message,setMessage]=useState(''),[error,setError]=useState(false);async function run(path:string,method:string,body:unknown){try{await api(path,{method,body});setError(false);setMessage('Participants updated.');await refetch()}catch(e){setError(true);setMessage(e instanceof Error?e.message:'Update failed')}}return <section className="panel"><h2>Participants & seeding</h2><Feedback message={message} error={error}/>{data?.participants.map(p=><div className="match-row" key={p.id}><div className="grow">{p.user.name}<p className="small muted">Seed {p.seed||'unassigned'}</p></div><Button variant="ghost" onClick={()=>{const reason=prompt('Reason for removal (at least 10 characters)');if(reason&&reason.length>=10&&confirm('Remove this player and their tournament spot?'))void run('/admin/tournaments/'+id+'/participants/'+p.id,'DELETE',{reason})}}>Remove</Button></div>)}<Button variant="outline" onClick={()=>{if(!data)return;const participantIds=[...data.participants].sort(()=>crypto.getRandomValues(new Uint32Array(1))[0]!/2**32-.5).map(p=>p.id);void run('/admin/tournaments/'+id+'/seeding','PATCH',{participantIds})}}>Randomize seeding</Button></section>}

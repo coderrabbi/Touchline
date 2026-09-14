@@ -1,0 +1,46 @@
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: touchline
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_DB: touchline
+    ports: ["127.0.0.1:5432:5432"]
+    volumes: ["postgres_data:/var/lib/postgresql"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U touchline"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    env_file: apps/api/.env
+    environment:
+      NODE_ENV: development
+      PORT: 4100
+      DATABASE_URL: postgresql://touchline:${POSTGRES_PASSWORD}@postgres:5432/touchline
+      DEV_INBOX_DIR: /app/local/mail
+      LOCAL_UPLOAD_DIR: /app/local/uploads
+      FRONTEND_URL: http://localhost:3100
+      BACKEND_URL: http://localhost:4100
+    volumes: ["api_local:/app/local"]
+    ports: ["127.0.0.1:4100:4100"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:4100/api/v1
+        NEXT_PUBLIC_SITE_URL: http://localhost:3100
+    environment:
+      API_INTERNAL_URL: http://api:4100/api/v1
+    ports: ["127.0.0.1:3100:3100"]
+    depends_on: [api]
+volumes:
+  postgres_data:
+  api_local:

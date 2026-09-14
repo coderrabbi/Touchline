@@ -1,0 +1,2 @@
+import fs from 'node:fs';
+const file='apps/api/src/app.ts';let s=fs.readFileSync(file,'utf8');for(const [name,path] of [['tournamentRoutes','tournament'],['matchRoutes','match'],['uploadRoutes','upload']]){if(!s.includes(name)){s=`import {${name}} from './routes/${path}.routes.js';\n`+s;s=s.replace("app.use('/api/v1',catalogRoutes);",`app.use('/api/v1',catalogRoutes);app.use('/api/v1',${name});`)}}fs.writeFileSync(file,s);

@@ -1,0 +1,11 @@
+import {prisma} from '../config/prisma.js';
+import {Router} from 'express';
+import multer from 'multer';
+import {z} from 'zod';
+import {requireAuth,requireCsrf} from '../middleware/auth.js';
+import {AppError} from '../utils/errors.js';
+import * as service from '../services/upload.service.js';
+export const uploadRoutes=Router();
+const multipart=multer({storage:multer.memoryStorage(),limits:{fileSize:5*1024*1024,files:1,fields:1},fileFilter:(_req,file,done)=>{if(!['image/jpeg','image/png','image/webp'].includes(file.mimetype))return done(new AppError(422,'Only JPG, PNG and WebP images are accepted.'));done(null,true)}});
+uploadRoutes.post('/uploads',requireAuth,requireCsrf,multipart.single('image'),async(req,res)=>{if(!req.file)throw new AppError(422,'Choose an image.');const purpose=z.enum(['AVATAR','TOURNAMENT_LOGO','TOURNAMENT_BANNER','MATCH_EVIDENCE']).parse(req.body.purpose);if(purpose.startsWith('TOURNAMENT')&&req.auth!.role==='PLAYER')throw new AppError(403,'Administrator access required.');res.status(201).json({success:true,message:'Image uploaded.',data:await service.upload(req.auth!.userId,purpose,req.file.buffer)})});
+uploadRoutes.get('/uploads/:id',async(req,res,next)=>{const item=await prisma.upload.findUnique({where:{id:z.uuid().parse(req.params.id)},select:{purpose:true}});if(!item)throw new AppError(404,'Image not found.');if(item.purpose==='MATCH_EVIDENCE')return requireAuth(req,res,next);res.setHeader('Cross-Origin-Resource-Policy','cross-origin');next();},async(req,res)=>{const item=await service.read(z.uuid().parse(req.params.id),req.auth?.userId,!!req.auth&&req.auth.role!=='PLAYER');res.type(item.mime).send(item.data)});

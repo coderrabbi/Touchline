@@ -1,0 +1,16 @@
+import {Router} from 'express';
+import {rateLimit} from 'express-rate-limit';
+import * as c from '../controllers/auth.controller.js';
+import {requireAuth,requireCsrf} from '../middleware/auth.js';
+export const authRoutes=Router();
+const limited=rateLimit({windowMs:15*60000,limit:30,standardHeaders:'draft-8',legacyHeaders:false,message:{success:false,message:'Too many attempts. Try again in 15 minutes.',errors:[]}});
+authRoutes.post('/register',limited,c.register);
+authRoutes.post('/login',limited,c.login);
+authRoutes.post('/refresh',requireCsrf,c.refresh);
+authRoutes.post('/logout',requireCsrf,c.logout);
+authRoutes.get('/me',requireAuth,c.me);
+authRoutes.get('/csrf',c.csrf);
+authRoutes.post('/forgot-password',limited,c.forgot);
+authRoutes.post('/reset-password',limited,c.reset);
+authRoutes.post('/verify-email',limited,c.verify);
+authRoutes.post('/resend-verification',limited,c.resend);

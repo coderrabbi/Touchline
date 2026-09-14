@@ -1,0 +1,12 @@
+import {assertIdentityAvailable} from './identity.service.js';
+import {transaction} from './transaction.js';
+import type {ProfileInput} from '@touchline/shared';
+import {prisma} from '../config/prisma.js';
+import {safeUserSelect} from './auth.service.js';
+import {AppError} from '../utils/errors.js';
+export function updateProfile(userId:string,input:ProfileInput){const {name,...profile}=input;return transaction(async tx=>{const current=await tx.profile.findUnique({where:{userId}});if(current?.efootballUsername.toLowerCase()!==profile.efootballUsername.toLowerCase())await assertIdentityAvailable(tx,profile.efootballUsername,[],userId);return tx.user.update({where:{id:userId},data:{name,profile:{upsert:{create:profile,update:profile}}},select:safeUserSelect});});}
+export async function publicProfile(username:string){const user=await prisma.user.findUnique({where:{username},select:{id:true,name:true,username:true,status:true,createdAt:true,profile:{select:{country:true,platform:true,efootballUsername:true,avatarUrl:true,publicHistory:true}},achievements:{select:{awardedAt:true,achievement:{select:{code:true,name:true,description:true}}}}}});if(!user||user.status!=='ACTIVE')throw new AppError(404,'Player not found.');const {status:_status,...publicUser}=user;const matches=await prisma.match.findMany({where:{status:{in:['COMPLETED','WALKOVER']},homeScore:{not:null},awayScore:{not:null},homeId:{not:null},awayId:{not:null},tournament:{visibility:'PUBLIC',publishedAt:{not:null}},OR:[{home:{userId:user.id}},{away:{userId:user.id}}]},select:{homeScore:true,awayScore:true,winnerId:true,homeId:true,awayId:true,home:{select:{userId:true}}}});
+ const stats={played:matches.length,wins:0,draws:0,losses:0,goalsFor:0,goalsAgainst:0,goalDifference:0};
+ for(const m of matches){const home=m.home?.userId===user.id;stats.goalsFor+=home?m.homeScore!:m.awayScore!;stats.goalsAgainst+=home?m.awayScore!:m.homeScore!;if(!m.winnerId)stats.draws++;else if(m.winnerId===(home?m.homeId:m.awayId))stats.wins++;else stats.losses++;}stats.goalDifference=stats.goalsFor-stats.goalsAgainst;
+ const history=user.profile?.publicHistory?await prisma.tournamentParticipant.findMany({where:{userId:user.id,tournament:{visibility:'PUBLIC',publishedAt:{not:null}}},select:{tournament:{select:{name:true,slug:true,status:true,startsAt:true,format:true}}},orderBy:{createdAt:'desc'},take:30}):null;
+ return {...publicUser,stats,history};}

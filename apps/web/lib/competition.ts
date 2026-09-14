@@ -1,0 +1,9 @@
+export interface PlayerRef{id:string;name:string;username:string;profile?:{efootballUsername:string;avatarUrl:string|null}}
+export interface Participant{id:string;userId:string;seed:number|null;user:PlayerRef}
+export interface MatchRecord{id:string;matchNumber:number;nextMatchId?:string|null;tournamentId:string;stage:string;round:number;position:number;status:string;homeId:string|null;awayId:string|null;winnerId:string|null;homeScore:number|null;awayScore:number|null;scheduledAt:string|null;home:Participant|null;away:Participant|null;tournament?:{name:string;slug:string};submissions?:Array<{id:string;submittedById:string;homeScore:number;awayScore:number;evidenceId:string|null;disputeEvidenceId:string|null;disputeReason:string|null;status:string}>}
+export interface StandingRow{participantId:string;scope:string;groupId:string|null;played:number;wins:number;draws:number;losses:number;goalsFor:number;goalsAgainst:number;goalDifference:number;points:number;participant:Participant}
+export interface CompetitionData{participantListPublic:boolean;participants:Participant[];matches:MatchRecord[];standings:StandingRow[];groups:Array<{id:string;name:string;members:Array<{participant:Participant}>}>;announcements:Array<{id:string;title:string;message:string;publishedAt:string}>;winners:Array<{place:number;participant:Participant}>;statistics:{totalMatches:number;completedMatches:number;totalGoals:number;averageGoals:number}}
+export interface Notice{id:string;title:string;message:string;link:string|null;readAt:string|null;createdAt:string}
+export interface PlayerDashboard{registrations:Array<{id:string;status:string;tournament:{id:string;name:string;slug:string;status:string}}> ;matches:MatchRecord[];notifications:Notice[];statistics:{played:number;wins:number;goals:number;winRate:number}}
+export const matchCode=(number:number)=>'TL-'+String(number).padStart(6,'0');
+

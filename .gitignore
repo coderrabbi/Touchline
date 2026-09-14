@@ -1,0 +1,56 @@
+*.png
+*.tar.gz
+.sites-runtime/
+check*.cjs
+improve.cjs
+node_modules/
+apps/*/dist/
+packages/*/dist/
+apps/*/.next/
+apps/api/src/generated/
+*.tsbuildinfo
+.env
+.env.example
+.env.local
+.env.test
+.local/
+coverage/
+test-results/
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# Builds
+dist/
+build/
+
+# Local application data
+.local/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Testing
+coverage/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE/local tooling
+.vscode/
+.idea/
+
+# Optional local AI/tooling data
+.openai/

@@ -1,0 +1,77 @@
+const {chromium}=require('C:/Users/Golam Rabbi/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const fs=require('fs'),path=require('path'),dotenv=require('dotenv'),assert=require('node:assert/strict');
+const base='http://localhost:3100';
+(async()=>{
+  const env=dotenv.parse(fs.readFileSync('apps/api/.env'));
+  const browser=await chromium.launch({headless:true,channel:'msedge'});
+  try {
+    const adminContext=await browser.newContext(),playerContext=await browser.newContext({viewport:{width:390,height:844}});
+    const admin=await adminContext.newPage(),player=await playerContext.newPage(),errors=[];
+    for(const page of [admin,player]){page.on('pageerror',error=>errors.push(error.message));page.on('dialog',dialog=>dialog.accept());}
+    await admin.goto(base+'/login');
+    await admin.locator('#email').fill('jordanlee');
+    await admin.locator('#password').fill(env.SEED_ADMIN_PASSWORD);
+    await admin.getByRole('button',{name:'Log in →',exact:true}).click();
+    await admin.waitForURL('**/dashboard');
+    const suffix=Date.now().toString(36),slug='chat-review-'+suffix;
+    await admin.goto(base+'/admin/tournaments/create');
+    await admin.locator('#name').fill('Community Review '+suffix);
+    await admin.locator('#slug').fill(slug);
+    await admin.locator('#description').fill('Tournament created for the community browser walkthrough.');
+    for(let i=0;i<6;i++){if(i===2)await admin.locator('#minPlayers').fill('2');await admin.getByRole('button',{name:'Continue →',exact:true}).click();}
+    await admin.getByRole('button',{name:'Review & publish',exact:true}).click();
+    await admin.waitForURL('**/admin/tournaments');
+    const destination=base+'/tournaments/'+slug+'?from=community-check';
+    await player.goto(destination);
+    await player.getByRole('link',{name:'Log in to join →'}).click();
+    await player.getByRole('link',{name:'Create an account',exact:true}).click();
+    assert.equal(new URL(player.url()).searchParams.get('next'),'/tournaments/'+slug+'?from=community-check');
+    const email='community_'+suffix+'@example.com',password='Cedar7Rain!'+suffix;
+    for(const [id,value] of Object.entries({name:'Community Review Player',username:'community_'+suffix,email,password,confirmPassword:password,efootballUsername:'ReviewStriker_'+suffix}))await player.locator('#'+id).fill(value);
+    await player.getByRole('button',{name:'Create account →',exact:true}).click();
+    await player.waitForURL(destination);await player.getByRole('status',{name:'Email verification required'}).waitFor();await player.reload();await player.getByRole('status',{name:'Email verification required'}).waitFor();
+    await player.getByText('Account created. Verify your email before joining.',{exact:false}).waitFor();
+    const mail=fs.readdirSync(env.DEV_INBOX_DIR).map(file=>JSON.parse(fs.readFileSync(path.join(env.DEV_INBOX_DIR,file)))).filter(m=>m.to===email&&m.subject.includes('Verify')).sort((a,b)=>b.createdAt.localeCompare(a.createdAt))[0];
+    assert.ok(mail);
+    await player.goto(mail.text.match(/http[^\s]+/)[0]);
+    await player.getByRole('button',{name:'Verify my email'}).click();
+    await player.getByText('Your email is verified. You can now log in.',{exact:true}).waitFor();await player.getByRole('status',{name:'Email verification required'}).waitFor({state:'hidden'});
+    await player.goto(destination);
+    await player.getByRole('checkbox').check();
+    await player.getByRole('button',{name:'Join tournament ↗',exact:true}).click();
+    await player.getByText('Registration submitted successfully.',{exact:true}).waitFor();
+    await player.getByRole('tab',{name:'Groups',exact:true}).click();
+    await player.getByText('Live',{exact:true}).waitFor();const send=player.getByRole('button',{name:'Send message →'});assert.ok(await send.isVisible());const colors=await send.evaluate(el=>({text:getComputedStyle(el).color,background:getComputedStyle(el).backgroundColor}));assert.notEqual(colors.text,colors.background);
+    await admin.goto(destination);
+    await admin.getByRole('tab',{name:'Groups',exact:true}).click();
+    await admin.getByLabel('Group invite link').fill('https://example.com/community-'+suffix);
+    await admin.getByRole('button',{name:'Save group link'}).click();
+    await player.getByRole('link',{name:'Open group invite ↗'}).waitFor();
+    assert.equal(await player.getByRole('link',{name:'Open group invite ↗'}).getAttribute('href'),'https://example.com/community-'+suffix);
+    await player.getByLabel('Message',{exact:true}).fill('Hello admin, I can play at 8 PM.');
+    await player.getByRole('button',{name:'Send message →'}).click();
+    await admin.getByText('Hello admin, I can play at 8 PM.',{exact:true}).waitFor();await admin.locator('.notification-toast').getByText('New group message',{exact:true}).waitFor();console.log('Admin received group notification.');
+    await admin.getByLabel('Message',{exact:true}).fill('Confirmed. Good luck in the tournament!');
+    await admin.getByRole('button',{name:'Send message →'}).click();
+    await player.getByText('Confirmed. Good luck in the tournament!',{exact:true}).waitFor();await player.locator('.notification-toast').getByText('New group message',{exact:true}).waitFor();console.log('Live notification checks passed.');
+    assert.equal(await player.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+    await player.screenshot({path:'.local/community-mobile.png',fullPage:true});
+    await admin.screenshot({path:'.local/community-desktop.png',fullPage:true});
+    await player.reload();
+    await player.getByRole('tab',{name:'Groups',exact:true}).click();
+    await player.getByText('Confirmed. Good luck in the tournament!',{exact:true}).waitFor();
+    await admin.goto(destination);
+    await admin.getByRole('checkbox').check();await admin.getByRole('button',{name:'Join tournament ↗',exact:true}).click();await admin.getByText('Registration submitted successfully.',{exact:true}).waitFor();
+    await admin.getByRole('button',{name:'Kick off now →',exact:true}).click();await admin.getByText('Tournament is live.',{exact:true}).waitFor();
+    await player.goto(destination);console.log('Post-kickoff page:',(await player.locator('body').innerText()).slice(0,650));await player.getByRole('tab',{name:'Players',exact:true}).click();
+    await player.locator('a[href="/players/community_'+suffix+'"]').click();await player.getByRole('heading',{name:'Tournament stats',exact:true}).waitFor();await player.getByText('ReviewStriker_'+suffix,{exact:false}).waitFor();
+    await player.screenshot({path:'.local/player-profile-mobile.png',fullPage:true});
+    for(const identifier of ['community_'+suffix,'ReviewStriker_'+suffix]){
+      await player.getByRole('button',{name:'Log out',exact:true}).click();await player.waitForURL('**/login');await player.locator('#email').fill(identifier);await player.locator('#password').fill(password);await player.getByRole('button',{name:'Log in →',exact:true}).click();await player.waitForURL(url=>!url.pathname.startsWith('/login'));
+    }
+    await admin.goto(base+'/admin/players');
+    await admin.getByLabel('Account role').first().waitFor();
+    assert.deepEqual(errors,[]);
+    console.log(JSON.stringify({errors,journeys:'username/admin login; sign-up return; group notifications in both sessions; kickoff from open registration; Players → public profile; player login by username and eFootball username; mobile fits'}));
+  } catch(error){for(const context of browser.contexts())for(const page of context.pages())console.log('Failure page:',page.url(),(await page.locator('body').innerText()).slice(0,1000));throw error;} finally {await browser.close();}
+})().catch(error=>{console.error(error.message);process.exit(1);});
