@@ -5,7 +5,7 @@ import { uploadRoutes } from "./routes/upload.routes.js";
 import { matchRoutes } from "./routes/match.routes.js";
 import { tournamentRoutes } from "./routes/tournament.routes.js";
 import { catalogRoutes } from "./routes/catalog.routes.js";
-import express from "express";
+import express, { type RequestHandler } from "express";
 import helmet from "helmet";
 import cors from "cors";
 import cookieParser from "cookie-parser";
@@ -18,6 +18,7 @@ import { userRoutes } from "./routes/user.routes.js";
 import { trustedOrigin, requireAuth, requireRole } from "./middleware/auth.js";
 import { errorHandler } from "./middleware/errors.js";
 import { AppError } from "./utils/errors.js";
+const createHelmetMiddleware = helmet as unknown as () => RequestHandler;
 export function createApp() {
   const app = express();
   app.disable("x-powered-by");
@@ -26,7 +27,7 @@ export function createApp() {
     res.setHeader("X-Request-Id", req.requestId);
     next();
   });
-  app.use(helmet());
+  app.use(createHelmetMiddleware());
   app.use(
     cors({
       origin: env.FRONTEND_URL,
