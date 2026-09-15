@@ -10,7 +10,8 @@ const schema = z.object({
   JWT_REFRESH_SECRET: z.string().min(48),
   FRONTEND_URL: z.url(),
   BACKEND_URL: z.url(),
-  EMAIL_MODE: z.enum(["development", "smtp"]).default("development"),
+  EMAIL_MODE: z.enum(["development", "smtp", "resend"]).default("development"),
+  RESEND_API_KEY: z.string().optional(),
   DEV_INBOX_DIR: z.string().default("../../.local/mail"),
   EMAIL_HOST: z.string().optional(),
   EMAIL_PORT: z.coerce.number().default(587),
@@ -21,11 +22,23 @@ const schema = z.object({
 export const env = schema.parse(process.env);
 if (env.JWT_ACCESS_SECRET === env.JWT_REFRESH_SECRET)
   throw new Error("Access and refresh secrets must differ");
-if (
-  env.NODE_ENV === "production" &&
-  (env.EMAIL_MODE !== "smtp" ||
-    !env.EMAIL_HOST ||
+if (env.NODE_ENV === "production") {
+  if (
     !env.FRONTEND_URL.startsWith("https://") ||
-    !env.BACKEND_URL.startsWith("https://"))
-)
-  throw new Error("Production requires HTTPS origins and SMTP email delivery");
+    !env.BACKEND_URL.startsWith("https://")
+  ) {
+    throw new Error("Production requires HTTPS origins");
+  }
+
+  if (env.EMAIL_MODE === "development") {
+    throw new Error("Production requires an email provider");
+  }
+
+  if (env.EMAIL_MODE === "smtp" && !env.EMAIL_HOST) {
+    throw new Error("SMTP requires EMAIL_HOST");
+  }
+
+  if (env.EMAIL_MODE === "resend" && !env.RESEND_API_KEY) {
+    throw new Error("Resend requires RESEND_API_KEY");
+  }
+}
