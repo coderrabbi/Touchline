@@ -1,6 +1,6 @@
 import type { ApiFailure, ApiResponse } from "@touchline/shared";
 
-const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4100/api/v1";
+const base = "/api/v1";
 
 export const apiBase = base;
 

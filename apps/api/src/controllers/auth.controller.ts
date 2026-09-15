@@ -15,8 +15,8 @@ const isProduction = env.NODE_ENV === "production";
 
 const cookies = {
   httpOnly: true,
-  secure: isProduction,
-  sameSite: isProduction ? ("none" as const) : ("lax" as const),
+  secure: env.NODE_ENV === "production",
+  sameSite: "lax" as const,
   path: "/",
 };
 function setSession(
