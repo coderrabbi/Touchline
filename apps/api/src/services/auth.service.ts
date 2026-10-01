@@ -234,7 +234,7 @@ export async function requestReset(email: string) {
 }
 export async function resetPassword(token: string, password: string) {
   const passwordHash = await bcrypt.hash(password, 12);
-  await prisma.$transaction(async (tx) => {
+  const account = await prisma.$transaction(async (tx) => {
     const record = await tx.passwordResetToken.findUnique({
       where: { tokenHash: hashToken(token) },
     });
@@ -249,7 +249,7 @@ export async function resetPassword(token: string, password: string) {
     });
     if (used.count !== 1)
       throw new AppError(400, "This reset link has already been used.");
-    await tx.user.update({
+    const account = await tx.user.update({
       where: { id: record.userId },
       data: { passwordHash, tokenVersion: { increment: 1 } },
     });
@@ -261,7 +261,14 @@ export async function resetPassword(token: string, password: string) {
       where: { userId: record.userId, consumedAt: null },
       data: { consumedAt: new Date() },
     });
+    return {email:account.email};
   });
+  try {
+    await sendAccountEmail(account.email, "changed");
+  } catch (error) {
+    // The password is already changed; notification failure must not undo it.
+    console.error("[EMAIL] Password-change notification failed:", error instanceof Error ? error.message : "Delivery failure");
+  }
 }
 export async function verifyEmail(token: string) {
   await prisma.$transaction(async (tx) => {

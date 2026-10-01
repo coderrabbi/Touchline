@@ -8,33 +8,33 @@ import nodemailer from "nodemailer";
 
 import { env } from "../config/env.js";
 
-type EmailKind = "verify" | "reset";
+type EmailKind = "verify" | "reset" | "changed";
 
 export async function sendAccountEmail(
   to: string,
   kind: EmailKind,
-  token: string,
+  token = "",
 ) {
   const url = new URL(
-    kind === "verify" ? "/verify-email" : "/reset-password",
+    kind === "changed" ? "/forgot-password" : kind === "verify" ? "/verify-email" : "/reset-password",
     env.FRONTEND_URL,
   );
 
-  url.searchParams.set("token", token);
+  if (kind !== "changed") url.searchParams.set("token", token);
 
-  const subject =
+  const subject = kind === "changed" ? "Your Touchline password was changed" :
     kind === "verify"
       ? "Verify your Touchline account"
       : "Reset your Touchline password";
 
-  const expires =
+  const expires = kind === "changed" ? "All previous sessions have been signed out. Log in again using your new password." :
     kind === "verify"
       ? "This link expires in 24 hours."
       : "This link expires in 30 minutes.";
 
-  const actionText = kind === "verify" ? "Verify Email" : "Reset Password";
+  const actionText = kind === "changed" ? "Secure My Account" : kind === "verify" ? "Verify Email" : "Reset Password";
 
-  const description =
+  const description = kind === "changed" ? "Your account password has been changed successfully. If you did not make this change, reset your password immediately using the link below." :
     kind === "verify"
       ? "Thanks for joining Touchline. Verify your email address to activate your account."
       : "We received a request to reset your Touchline password.";
@@ -48,7 +48,7 @@ ${url.toString()}
 
 ${expires}
 
-If you did not request this, you can safely ignore this email.`;
+${kind === "changed" ? "If this was you, no further action is needed." : "If you did not request this, you can safely ignore this email."}`;
 
   const html = `
     <!DOCTYPE html>
@@ -144,8 +144,7 @@ If you did not request this, you can safely ignore this email.`;
                 margin-top:24px;
               "
             >
-              If you did not request this,
-              you can safely ignore this email.
+              ${kind === "changed" ? "If this was you, no further action is needed." : "If you did not request this, you can safely ignore this email."}
             </p>
 
             <p

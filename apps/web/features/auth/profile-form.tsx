@@ -92,8 +92,8 @@ export function ProfileForm({ user }: { user: SessionUser }) {
             <option value="" disabled>
               Choose PC or Mobile
             </option>
-            <option value="STEAM_PC">PC</option>
             <option value="MOBILE">Mobile</option>
+            <option value="STEAM_PC">PC</option>
           </select>
           <p className="field-error">{errors.platform?.message}</p>
           {user.profile &&
