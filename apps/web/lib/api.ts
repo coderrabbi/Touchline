@@ -1,3 +1,4 @@
+import { actionToast } from "./action-toast";
 import type { ApiFailure, ApiResponse } from "@touchline/shared";
 
 const base = "/api/v1";
@@ -72,7 +73,16 @@ async function rotate() {
   csrfToken = data.data.csrfToken;
 }
 
-export async function api<T>(
+type RequestOptions = { method?: string; body?: unknown; anonymous?: boolean; notify?: boolean };
+
+export function api<T>(path: string, options: RequestOptions = {}, retry = true): Promise<T> {
+  const method = (options.method || "GET").toUpperCase();
+  const operation = () => request<T>(path, { ...options, method }, retry);
+  if (["GET", "HEAD"].includes(method) || options.notify === false) return operation();
+  return actionToast(operation, path, method);
+}
+
+async function request<T>(
   path: string,
   options: {
     method?: string;
@@ -128,7 +138,7 @@ export async function api<T>(
 
       await refreshing;
 
-      return api<T>(path, options, false);
+      return request<T>(path, options, false);
     } catch (error) {
       if (error instanceof ApiError && [401,403].includes(error.status)) {
         clearSession();
@@ -152,7 +162,7 @@ export async function api<T>(
   return value.data;
 }
 
-export async function uploadImage(
+async function uploadRequest(
   file: File,
   purpose: string,
   retry = true,
@@ -182,7 +192,7 @@ export async function uploadImage(
   if (response.status === 401 && retry) {
     refreshing ??= rotate().finally(() => { refreshing = undefined; });
     await refreshing;
-    return uploadImage(file, purpose, false);
+    return uploadRequest(file, purpose, false);
   }
 
   return (
@@ -204,4 +214,8 @@ export async function openProtectedUpload(uploadId: string): Promise<string> {
   }
   if(!response.ok)throw new ApiError(response.status,'Unable to load evidence. Please try again.');
   return URL.createObjectURL(await response.blob());
+}
+
+export function uploadImage(file: File, purpose: string, retry = true): Promise<{id: string; url: string}> {
+  return actionToast(() => uploadRequest(file, purpose, retry), "/uploads", "POST");
 }

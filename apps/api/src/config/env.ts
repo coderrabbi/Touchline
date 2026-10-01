@@ -20,10 +20,17 @@ const schema = z.object({
   EMAIL_PASSWORD: z.string().optional(),
   EMAIL_FROM: z.string().default("Touchline <noreply@example.com>"),
 });
-export const env = schema.parse(process.env);
+const parsed = schema.safeParse(process.env);
+if (!parsed.success) {
+  // Never print environment values or Zod input details on startup failure.
+  throw new Error('Invalid environment configuration: ' + [...new Set(parsed.error.issues.map(issue => issue.path.join('.')))].join(', '));
+}
+export const env = parsed.data;
+if (process.env.NODE_TLS_REJECT_UNAUTHORIZED === '0') throw new Error('TLS certificate verification must remain enabled');
 if (env.JWT_ACCESS_SECRET === env.JWT_REFRESH_SECRET)
   throw new Error("Access and refresh secrets must differ");
 if (env.NODE_ENV === "production") {
+  if (process.env.S3_ENDPOINT && !process.env.S3_ENDPOINT.startsWith('https://')) throw new Error('Production object storage requires HTTPS');
   if (
     !env.FRONTEND_URL.startsWith("https://") ||
     !env.BACKEND_URL.startsWith("https://")

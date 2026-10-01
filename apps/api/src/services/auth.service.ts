@@ -227,9 +227,9 @@ export async function requestReset(email: string) {
   try {
     await sendAccountEmail(email, "reset", token);
 
-    console.log(`[EMAIL] Password reset email sent to ${email}`);
-  } catch (error) {
-    console.error("[EMAIL] Password reset failed:", error instanceof Error ? error.message : "Delivery failure");
+    console.log(`[EMAIL] Password reset email accepted`);
+  } catch {
+    console.error("[EMAIL] Password reset failed:", "Delivery failure; inspect provider status using its dashboard.");
   }
 }
 export async function resetPassword(token: string, password: string) {
@@ -243,6 +243,14 @@ export async function resetPassword(token: string, password: string) {
         400,
         "This reset link is invalid or expired. Request a new link.",
       );
+    const current = await tx.user.findUnique({
+      where: { id: record.userId },
+      select: { passwordHash: true },
+    });
+    if (!current) throw new AppError(400, "This reset link is invalid or expired. Request a new link.");
+    if (await bcrypt.compare(password, current.passwordHash)) {
+      throw new AppError(422, "Your new password must be different from your current password.");
+    }
     const used = await tx.passwordResetToken.updateMany({
       where: { id: record.id, consumedAt: null, expiresAt: { gt: new Date() } },
       data: { consumedAt: new Date() },
@@ -265,9 +273,9 @@ export async function resetPassword(token: string, password: string) {
   });
   try {
     await sendAccountEmail(account.email, "changed");
-  } catch (error) {
+  } catch {
     // The password is already changed; notification failure must not undo it.
-    console.error("[EMAIL] Password-change notification failed:", error instanceof Error ? error.message : "Delivery failure");
+    console.error("[EMAIL] Password-change notification failed:", "Delivery failure; inspect provider status using its dashboard.");
   }
 }
 export async function verifyEmail(token: string) {
@@ -309,9 +317,9 @@ export async function resendVerification(email: string) {
   try {
     await sendAccountEmail(email, "verify", token);
 
-    console.log(`[EMAIL] Verification email sent to ${email}`);
-  } catch (error) {
-    console.error("[EMAIL] Verification email failed:", error instanceof Error ? error.message : "Delivery failure");
+    console.log(`[EMAIL] Verification email accepted`);
+  } catch {
+    console.error("[EMAIL] Verification email failed:", "Delivery failure; inspect provider status using its dashboard.");
     throw new AppError(503,"Email delivery is temporarily unavailable. Please try again shortly.");
   }
 }

@@ -8,7 +8,8 @@ import {Input} from './input';
 export function PasswordInput({showStrength = false, label = 'password', ...props}: ComponentProps<'input'> & {showStrength?: boolean; label?: string}) {
   const [visible, setVisible] = useState(false);
   const [value, setValue] = useState(String(props.defaultValue ?? props.value ?? ''));
-  const strength = value ? passwordStrength(value) : null;
+  const currentValue = props.value !== undefined ? String(props.value) : value;
+  const strength = currentValue ? passwordStrength(currentValue) : null;
   const descriptionId = `${props.id}-strength`;
   return <>
     <div className="password-control">

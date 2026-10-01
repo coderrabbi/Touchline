@@ -195,7 +195,7 @@ ${kind === "changed" ? "If this was you, no further action is needed." : "If you
       },
     );
 
-    console.log(`[EMAIL] ${kind} email written to local inbox for ${to}`);
+    console.log(`[EMAIL] ${kind} email written to local inbox`);
 
     return;
   }
@@ -265,5 +265,5 @@ ${kind === "changed" ? "If this was you, no further action is needed." : "If you
     html,
   });
 
-  console.log(`[EMAIL] ${kind} email sent via SMTP to ${to}`);
+  console.log(`[EMAIL] ${kind} email sent via SMTP`);
 }

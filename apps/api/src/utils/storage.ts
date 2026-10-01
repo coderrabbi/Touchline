@@ -22,7 +22,7 @@ function safePath(key: string) {
 const local: Storage = {
   async put(key, data) {
     await mkdir(directory, { recursive: true });
-    await writeFile(safePath(key), data);
+    await writeFile(safePath(key), data, {mode: 0o600});
   },
   async get(key) {
     return readFile(safePath(key));
