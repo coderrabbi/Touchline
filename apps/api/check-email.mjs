@@ -6,7 +6,8 @@ import 'dotenv/config';
 import nodemailer from 'nodemailer';
 const connectionOnly=process.argv.includes('--connection-only');
 const mode=process.env.EMAIL_MODE||'development';
-if(!connectionOnly&&mode!=='smtp'){console.log('Email mode: local development inbox. Configure EMAIL_MODE=smtp and your provider settings before public launch.');process.exitCode=1;}
+if(!connectionOnly&&mode==='resend'){const configured=!!process.env.RESEND_API_KEY&&!!process.env.EMAIL_FROM;console.log(configured?'Resend configuration is present. This check does not send email or verify credentials or inbox delivery.':'Configure RESEND_API_KEY and EMAIL_FROM.');if(!configured)process.exitCode=1;}
+else if(!connectionOnly&&mode!=='smtp'){console.log('Email mode: local development inbox. Configure EMAIL_MODE=smtp and your provider settings before public launch.');process.exitCode=1;}
 else if(!process.env.EMAIL_HOST||!process.env.EMAIL_FROM){console.log('Missing SMTP host or sender. Configure EMAIL_HOST and EMAIL_FROM securely.');process.exitCode=1;}
 else{
  const port=Number(process.env.EMAIL_PORT||587);

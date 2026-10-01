@@ -17,7 +17,7 @@ export function VerificationNotice() {
   const local=data.emailDeliveryMode==='development';
   return <aside className="verification-notice" role="status" aria-label="Email verification required">
     <Mail size={22} aria-hidden="true"/>
-    <div><p>{local?'Please verify your email to join a tournament.':'Verification link sent to your email. To join the tournament, please verify your email.'}</p>
+    <div><p>{local?'Please verify your email to join a tournament.':'Verify your email to join tournaments. Check your inbox, or request a new verification link.'}</p>
       {local&&<p className="small">Local preview: your verification link is saved in the private .local/mail folder on this computer, instead of your email inbox.</p>}
     </div>
     <Link href="/verify-email" className="button button-outline">Verify email / Resend →</Link>

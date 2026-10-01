@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { matchCode } from "@/lib/competition";
+import { EvidenceViewer } from "./evidence-viewer";
 import { MatchSchedule } from "./match-schedule";
 import { MatchCoordination } from "./match-coordination";
 import { PlayerAvatar } from "@/components/player-avatar";
@@ -13,7 +14,7 @@ import {
   type ScoreInput,
   type SessionUser,
 } from "@touchline/shared";
-import { api, uploadImage, openProtectedUpload } from "@/lib/api";
+import { api, uploadImage } from "@/lib/api";
 import type { MatchRecord } from "@/lib/competition";
 import { Button } from "@/components/ui/button";
 import { Feedback } from "@/components/ui/feedback";
@@ -78,7 +79,7 @@ export function MatchRoom({ id }: { id: string }) {
       {m && (
         <>
           <div className="eyebrow">
-            {human(m.stage)} · ROUND {m.round}
+            {human(m.stage)} Â· ROUND {m.round}
           </div>
           <h1 style={{ marginTop: 14 }}>
             {m.tournament?.name || "Match room"}
@@ -89,7 +90,7 @@ export function MatchRoom({ id }: { id: string }) {
                 Match ID: {matchCode(m.matchNumber)}
               </span>
               <Link href="/matches" className="lime small">
-                Find another match →
+                Find another match â†’
               </Link>
             </div>
             <div className="scoreboard">
@@ -144,16 +145,13 @@ export function MatchRoom({ id }: { id: string }) {
               here. Scores only become official after opponent confirmation or
               an administrator decision.
             </p>
-            {pending?.evidenceId && (
-              <a
-                className="lime small"
-                href={`/api/v1/uploads/${pending.evidenceId}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                View submitted evidence ↗
-              </a>
-            )}
+            {pending && <section className="dispute-evidence" aria-label="Result evidence">
+              <div className="actions">
+                {pending.evidenceId && <EvidenceViewer id={pending.evidenceId} label="View submitted evidence"/>}
+                {pending.disputeEvidenceId && <EvidenceViewer id={pending.disputeEvidenceId} label="View opponent’s evidence"/>}
+              </div>
+              {pending.disputeReason && <div className="feedback"><div><strong>Opponent’s dispute reason</strong><p>{pending.disputeReason}</p></div></div>}
+            </section>}
             <Feedback message={message} />
             <Feedback message={failure} error />
           </div>
@@ -245,7 +243,7 @@ export function MatchRoom({ id }: { id: string }) {
                     className="field"
                     style={{ display: "block", marginTop: 20 }}
                   >
-                    Screenshot · PNG/JPG/WebP, up to 5 MB
+                    Screenshot Â· PNG/JPG/WebP, up to 5 MB
                     <input
                       className="input"
                       type="file"

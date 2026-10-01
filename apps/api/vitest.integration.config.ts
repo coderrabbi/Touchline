@@ -1,0 +1,15 @@
+import {defineConfig} from 'vitest/config';
+import 'dotenv/config';
+const target=process.env.TEST_DATABASE_URL;
+if(!target)throw new Error('Set TEST_DATABASE_URL to a separate disposable database. Integration tests never use DATABASE_URL by default.');
+const destination=new URL(target);
+const current=process.env.DATABASE_URL?new URL(process.env.DATABASE_URL):null;
+if(current&&destination.hostname===current.hostname&&destination.pathname===current.pathname)throw new Error('TEST_DATABASE_URL must be a different database from DATABASE_URL.');
+process.env.DATABASE_URL=target;
+process.env.DIRECT_URL=target;
+process.env.NODE_ENV='test';
+process.env.EMAIL_MODE='development';
+process.env.STORAGE_PROVIDER='local';
+process.env.DEV_INBOX_DIR='../../.local/test-mail';
+process.env.LOCAL_UPLOAD_DIR='../../.local/test-uploads';
+export default defineConfig({test:{include:['test/**/*.integration.test.ts'],fileParallelism:false,testTimeout:20000,hookTimeout:20000}});

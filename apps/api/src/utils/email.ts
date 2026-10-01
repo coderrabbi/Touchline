@@ -1,3 +1,4 @@
+import {deliverResend} from './resend.js';
 import * as tls from "node:tls";
 import { mkdir, writeFile, readFile } from "node:fs/promises";
 
@@ -207,54 +208,8 @@ If you did not request this, you can safely ignore this email.`;
    * Recommended for Render Free.
    */
   if (env.EMAIL_MODE === "resend") {
-    if (!env.RESEND_API_KEY) {
-      throw new Error("RESEND_API_KEY is required when EMAIL_MODE=resend");
-    }
-
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-
-      headers: {
-        Authorization: `Bearer ${env.RESEND_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-
-      body: JSON.stringify({
-        from: env.EMAIL_FROM,
-        to: [to],
-        subject,
-        text,
-        html,
-      }),
-    });
-
-    const responseText = await response.text();
-
-    if (!response.ok) {
-      throw new Error(
-        `Resend email failed (${response.status}): ${responseText}`,
-      );
-    }
-
-    let emailId = "";
-
-    try {
-      const result = JSON.parse(responseText) as {
-        id?: string;
-      };
-
-      emailId = result.id || "";
-    } catch {
-      // Response was successful,
-      // so failing to parse the body
-      // should not fail email delivery.
-    }
-
-    console.log(
-      `[EMAIL] ${kind} email sent via Resend to ${to}${
-        emailId ? ` (${emailId})` : ""
-      }`,
-    );
+    const emailId=await deliverResend(env.RESEND_API_KEY,{from:env.EMAIL_FROM,to:[to],subject,text,html});
+    console.log(`[EMAIL] ${kind} accepted by Resend (${emailId}).`);
 
     return;
   }

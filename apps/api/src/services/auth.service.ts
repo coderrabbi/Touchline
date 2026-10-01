@@ -216,10 +216,6 @@ export async function requestReset(email: string) {
   if (!user || user.status !== "ACTIVE") return;
   const token = opaqueToken();
   await prisma.$transaction([
-    prisma.passwordResetToken.updateMany({
-      where: { userId: user.id, consumedAt: null },
-      data: { consumedAt: new Date() },
-    }),
     prisma.passwordResetToken.create({
       data: {
         userId: user.id,
@@ -233,7 +229,7 @@ export async function requestReset(email: string) {
 
     console.log(`[EMAIL] Password reset email sent to ${email}`);
   } catch (error) {
-    console.error("[EMAIL] Password reset failed:", error);
+    console.error("[EMAIL] Password reset failed:", error instanceof Error ? error.message : "Delivery failure");
   }
 }
 export async function resetPassword(token: string, password: string) {
@@ -295,10 +291,6 @@ export async function resendVerification(email: string) {
   if (!user || user.emailVerified || user.status !== "ACTIVE") return;
   const token = opaqueToken();
   await prisma.$transaction([
-    prisma.emailVerificationToken.updateMany({
-      where: { userId: user.id, consumedAt: null },
-      data: { consumedAt: new Date() },
-    }),
     prisma.emailVerificationToken.create({
       data: {
         userId: user.id,
@@ -312,6 +304,7 @@ export async function resendVerification(email: string) {
 
     console.log(`[EMAIL] Verification email sent to ${email}`);
   } catch (error) {
-    console.error("[EMAIL] Verification email failed:", error);
+    console.error("[EMAIL] Verification email failed:", error instanceof Error ? error.message : "Delivery failure");
+    throw new AppError(503,"Email delivery is temporarily unavailable. Please try again shortly.");
   }
 }

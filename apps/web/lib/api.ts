@@ -44,6 +44,7 @@ async function csrf() {
     const data = await decode<{ csrfToken: string }>(
       await fetch(base + "/auth/csrf", {
         credentials: "include",
+      signal: AbortSignal.timeout(15000),
         cache: "no-store",
       }),
     );
@@ -61,6 +62,7 @@ async function rotate() {
     await fetch(base + "/auth/refresh", {
       method: "POST",
       credentials: "include",
+      signal: AbortSignal.timeout(15000),
       headers: {
         "X-CSRF-Token": token,
       },
@@ -87,6 +89,7 @@ export async function api<T>(
     res = await fetch(base + path, {
       method,
       credentials: "include",
+      signal: AbortSignal.timeout(15000),
       cache: "no-store",
 
       headers: {
@@ -115,7 +118,7 @@ export async function api<T>(
   if (
     res.status === 401 &&
     retry &&
-    !options.anonymous &&
+    (!options.anonymous || path === "/auth/me") &&
     !path.startsWith("/auth/refresh")
   ) {
     try {
@@ -126,10 +129,12 @@ export async function api<T>(
       await refreshing;
 
       return api<T>(path, options, false);
-    } catch {
-      clearSession();
-
-      throw new ApiError(401, "Your session has expired. Please log in again.");
+    } catch (error) {
+      if (error instanceof ApiError && [401,403].includes(error.status)) {
+        clearSession();
+        throw new ApiError(401, "Your session has expired. Please log in again.");
+      }
+      throw error;
     }
   }
 
@@ -150,6 +155,7 @@ export async function api<T>(
 export async function uploadImage(
   file: File,
   purpose: string,
+  retry = true,
 ): Promise<{
   id: string;
   url: string;
@@ -166,11 +172,18 @@ export async function uploadImage(
   const response = await fetch(base + "/uploads", {
     method: "POST",
     credentials: "include",
+      signal: AbortSignal.timeout(15000),
     headers: {
       "X-CSRF-Token": await csrf(),
     },
     body: form,
   });
+
+  if (response.status === 401 && retry) {
+    refreshing ??= rotate().finally(() => { refreshing = undefined; });
+    await refreshing;
+    return uploadImage(file, purpose, false);
+  }
 
   return (
     await decode<{
@@ -180,66 +193,15 @@ export async function uploadImage(
   ).data;
 }
 
-/**
- * Opens protected uploads such as MATCH_EVIDENCE.
- */
-export async function openProtectedUpload(uploadId: string) {
-  async function request() {
-    return fetch(`${base}/uploads/${uploadId}`, {
-      method: "GET",
-      credentials: "include",
-      cache: "no-store",
-    });
+/** Fetch evidence with the same session recovery used by API calls. */
+export async function openProtectedUpload(uploadId: string): Promise<string> {
+  const request=()=>fetch(`${base}/uploads/${encodeURIComponent(uploadId)}`,{credentials:'include',cache:'no-store'});
+  let response=await request();
+  if(response.status===401){
+    refreshing ??= rotate().finally(()=>{refreshing=undefined});
+    await refreshing;
+    response=await request();
   }
-
-  let response = await request();
-
-  // Try refreshing the session once.
-  if (response.status === 401) {
-    try {
-      refreshing ??= rotate().finally(() => {
-        refreshing = undefined;
-      });
-
-      await refreshing;
-
-      response = await request();
-    } catch {
-      clearSession();
-
-      throw new ApiError(401, "Your session has expired. Please log in again.");
-    }
-  }
-
-  if (!response.ok) {
-    let message = "Unable to open evidence.";
-
-    try {
-      const data = await response.json();
-
-      if (data?.message) {
-        message = data.message;
-      }
-    } catch {
-      // Response may be non-JSON.
-    }
-
-    throw new ApiError(response.status, message);
-  }
-
-  const blob = await response.blob();
-
-  const objectUrl = URL.createObjectURL(blob);
-
-  const windowRef = window.open(objectUrl, "_blank", "noopener,noreferrer");
-
-  if (!windowRef) {
-    URL.revokeObjectURL(objectUrl);
-
-    throw new ApiError(0, "Your browser blocked the evidence popup.");
-  }
-
-  setTimeout(() => {
-    URL.revokeObjectURL(objectUrl);
-  }, 60_000);
+  if(!response.ok)throw new ApiError(response.status,'Unable to load evidence. Please try again.');
+  return URL.createObjectURL(await response.blob());
 }

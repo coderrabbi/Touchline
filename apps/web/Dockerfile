@@ -8,9 +8,9 @@ RUN npm ci
 COPY tsconfig.base.json ./
 COPY packages/shared packages/shared
 COPY apps/web apps/web
-ARG NEXT_PUBLIC_API_URL
+ARG API_INTERNAL_URL
 ARG NEXT_PUBLIC_SITE_URL
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
+ENV NEXT_OUTPUT_STANDALONE=true API_INTERNAL_URL=$API_INTERNAL_URL NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
 RUN npm run build -w @touchline/shared && npm run build -w @touchline/web
 FROM node:24-bookworm-slim AS runtime
 WORKDIR /app

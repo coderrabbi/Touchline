@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 const apiUrl = process.env.API_INTERNAL_URL || "http://localhost:4100/api/v1";
 
 const config: NextConfig = {
+  output: process.env.NEXT_OUTPUT_STANDALONE === "true" ? "standalone" : undefined,
   transpilePackages: ["@touchline/shared"],
   poweredByHeader: false,
 

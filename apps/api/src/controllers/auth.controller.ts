@@ -11,7 +11,6 @@ import { prisma } from "../config/prisma.js";
 import * as service from "../services/auth.service.js";
 import { AppError } from "../utils/errors.js";
 import { csrfFor, hashToken, verifyToken } from "../utils/tokens.js";
-const isProduction = env.NODE_ENV === "production";
 
 const cookies = {
   httpOnly: true,

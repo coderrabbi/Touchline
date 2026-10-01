@@ -22,4 +22,4 @@ RUN mkdir -p /app/local/mail /app/local/uploads && chown -R node:node /app/local
 USER node
 EXPOSE 4100
 WORKDIR /app/apps/api
-CMD ["node","dist/server.js"]
+CMD ["node","dist/local-server.js"]

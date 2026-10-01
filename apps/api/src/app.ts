@@ -22,6 +22,8 @@ const createHelmetMiddleware = helmet as unknown as () => RequestHandler;
 export function createApp() {
   const app = express();
   app.disable("x-powered-by");
+  // Render has a reverse proxy. Override the hop count for other deployments.
+  app.set("trust proxy", env.NODE_ENV === "production" || process.env.TRUST_PROXY_HOPS !== undefined ? env.TRUST_PROXY_HOPS : false);
   app.use((req, res, next) => {
     req.requestId = randomUUID();
     res.setHeader("X-Request-Id", req.requestId);

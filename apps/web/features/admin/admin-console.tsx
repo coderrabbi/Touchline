@@ -5,7 +5,7 @@ import { DeleteTournament } from "./delete-tournament";
 import { DeleteAccount } from "./delete-account";
 import { RoleControl } from "./role-control";
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BarChart,
   Bar,
@@ -42,6 +42,7 @@ interface AdminData {
   statistics: Record<string, number>;
 }
 export function AdminConsole({ section = "dashboard" }: { section?: string }) {
+  const cache = useQueryClient();
   const { data, error, isPending, refetch } = useQuery({
     queryKey: ["admin"],
     queryFn: () => api<AdminData>("/admin/dashboard"),
@@ -61,6 +62,23 @@ export function AdminConsole({ section = "dashboard" }: { section?: string }) {
     } finally {
       setBusy(false);
     }
+  }
+  async function afterDelete(collection: 'users' | 'tournaments', id: string) {
+    // The DELETE has succeeded. Remove the card before requesting fresh totals.
+    await cache.cancelQueries({queryKey:['admin']});
+    cache.setQueryData<AdminData>(['admin'], current => current ? {
+      ...current,
+      [collection]: current[collection].filter(item => item.id !== id),
+    } : current);
+    setMessage(collection === 'users' ? 'Account deleted. The list is up to date.' : 'Tournament deleted. The list is up to date.');
+    await Promise.all([
+      cache.invalidateQueries({queryKey:['admin']}),
+      cache.invalidateQueries({queryKey:['dashboard']}),
+      cache.invalidateQueries({queryKey:['home-tournaments']}),
+      cache.invalidateQueries({queryKey:['home-community']}),
+      cache.invalidateQueries({queryKey:['competition']}),
+      cache.invalidateQueries({queryKey:['notifications']}),
+    ]);
   }
   function reason() {
     return (
@@ -253,7 +271,7 @@ export function AdminConsole({ section = "dashboard" }: { section?: string }) {
                     <Button asChild variant="outline">
                       <Link href={"/tournaments/" + t.slug}>View ↗</Link>
                     </Button>
-                    <DeleteTournament t={t} onSaved={refetch} />
+                    <DeleteTournament t={t} onSaved={()=>afterDelete('tournaments',t.id)} />
                     {!["CANCELLED", "COMPLETED"].includes(t.status) && (
                       <Button
                         variant="ghost"
@@ -414,7 +432,7 @@ export function AdminConsole({ section = "dashboard" }: { section?: string }) {
 
                   <DeleteAccount
                     user={u}
-                    onSaved={refetch}
+                    onSaved={()=>afterDelete('users',u.id)}
                   />
                 </div>
               </td>
@@ -532,7 +550,7 @@ export function AdminConsole({ section = "dashboard" }: { section?: string }) {
             <div className="mobile-delete-control">
               <DeleteAccount
                 user={u}
-                onSaved={refetch}
+                onSaved={()=>afterDelete('users',u.id)}
               />
             </div>
           </div>

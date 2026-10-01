@@ -4,6 +4,7 @@ const schema = z.object({
   NODE_ENV: z
     .enum(["development", "test", "production"])
     .default("development"),
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(10).default(1),
   PORT: z.coerce.number().int().min(1).max(65535).default(4100),
   DATABASE_URL: z.string().startsWith("postgresql://"),
   JWT_ACCESS_SECRET: z.string().min(48),

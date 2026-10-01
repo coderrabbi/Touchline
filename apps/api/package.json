@@ -3,17 +3,18 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
- "scripts": {
-  "dev": "tsx watch src/local-server.ts",
-  "build": "tsc -p tsconfig.json",
-  "start": "node dist/local-server.js",
-  "typecheck": "tsc --noEmit -p tsconfig.json",
-  "test": "vitest run",
-  "db:generate": "prisma generate",
-  "db:migrate": "prisma migrate deploy",
-  "db:seed": "tsx prisma/seed.ts && tsx prisma/seed-competition.ts",
-  "db:studio": "prisma studio"
-},
+  "scripts": {
+    "dev": "tsx watch src/local-server.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/local-server.js",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:seed": "tsx prisma/seed.ts && tsx prisma/seed-competition.ts",
+    "db:studio": "prisma studio",
+    "test:integration": "vitest run --config vitest.integration.config.ts"
+  },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1131.0",
     "@prisma/adapter-pg": "7.10.0",
