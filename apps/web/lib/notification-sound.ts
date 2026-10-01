@@ -1,5 +1,12 @@
 'use client';
 let context:AudioContext|undefined;
+export async function prepareNotificationAudio() {
+  try {
+    context??=new AudioContext();
+    if(context.state==='suspended')await context.resume();
+    return context.state==='running';
+  }catch{return false;}
+}
 export async function notificationTone() {
   try {
     context??=new AudioContext();
