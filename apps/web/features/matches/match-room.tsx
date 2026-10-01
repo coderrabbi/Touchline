@@ -79,7 +79,7 @@ export function MatchRoom({ id }: { id: string }) {
       {m && (
         <>
           <div className="eyebrow">
-            {human(m.stage)} Â· ROUND {m.round}
+            {human(m.stage)} · ROUND {m.round}
           </div>
           <h1 style={{ marginTop: 14 }}>
             {m.tournament?.name || "Match room"}
@@ -90,7 +90,7 @@ export function MatchRoom({ id }: { id: string }) {
                 Match ID: {matchCode(m.matchNumber)}
               </span>
               <Link href="/matches" className="lime small">
-                Find another match â†’
+                Find another match →
               </Link>
             </div>
             <div className="scoreboard">
@@ -243,7 +243,7 @@ export function MatchRoom({ id }: { id: string }) {
                     className="field"
                     style={{ display: "block", marginTop: 20 }}
                   >
-                    Screenshot Â· PNG/JPG/WebP, up to 5 MB
+                    Screenshot · PNG/JPG/WebP, up to 5 MB
                     <input
                       className="input"
                       type="file"
