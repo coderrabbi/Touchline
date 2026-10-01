@@ -32,7 +32,7 @@ function setSession(
 
   res.cookie("tl_refresh", session.refreshToken, {
     ...cookies,
-    maxAge: 7 * 86_400_000,
+    maxAge: 86_400_000,
   });
 }
 function clearSession(res: Response) {

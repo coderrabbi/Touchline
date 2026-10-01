@@ -53,7 +53,7 @@ export function MatchRoom({ id }: { id: string }) {
     participant =
       !!user && [m?.home?.userId, m?.away?.userId].includes(user.id),
     pending = m?.submissions?.find((s) =>
-      ["PENDING", "DISPUTED"].includes(s.status),
+      ["PENDING", "CONFIRMED", "DISPUTED"].includes(s.status),
     ),
     opponent = participant && pending?.submittedById !== user?.id;
   async function act(path: string, body?: unknown, method = "POST") {
@@ -142,17 +142,17 @@ export function MatchRoom({ id }: { id: string }) {
             </div>
             <p className="small muted" style={{ marginTop: 20 }}>
               Play this match inside eFootball. Upload a full-time screenshot
-              here. Scores only become official after opponent confirmation or
+              here. Scores only become official after administrator review and
               an administrator decision.
             </p>
-            {pending && <section className="dispute-evidence" aria-label="Result evidence">
+            {m.submissions?.[0] && <section className="dispute-evidence" aria-label="Result evidence">
               <div className="actions">
-                {pending.evidenceId && <EvidenceViewer id={pending.evidenceId} label="View submitted evidence"/>}
-                {pending.disputeEvidenceId && <EvidenceViewer id={pending.disputeEvidenceId} label="View opponent’s evidence"/>}
+                {m.submissions[0].evidenceId && <EvidenceViewer id={m.submissions[0].evidenceId} label="View submitted evidence"/>}
+                {m.submissions[0].disputeEvidenceId && <EvidenceViewer id={m.submissions[0].disputeEvidenceId} label="View opponent’s evidence"/>}
               </div>
-              {pending.disputeReason && <div className="feedback"><div><strong>Opponent’s dispute reason</strong><p>{pending.disputeReason}</p></div></div>}
+              {m.submissions[0].disputeReason && <div className="feedback"><div><strong>Opponent’s dispute reason</strong><p>{m.submissions[0].disputeReason}</p></div></div>}
             </section>}
-            <Feedback message={message} />
+            <p className="small muted">Both players and administrators can view the evidence. Disputing adds a second screenshot without deleting the original. An administrator reviews and publishes the final result.</p><Feedback message={message} />
             <Feedback message={failure} error />
           </div>
           {user && user.role !== "PLAYER" && m.status === "SCHEDULED" && (
@@ -289,7 +289,7 @@ export function MatchRoom({ id }: { id: string }) {
                         Submit for confirmation
                       </Button>
                     )}
-                    {opponent && m.status === "RESULT_SUBMITTED" && (
+                    {opponent && pending?.status === "PENDING" && m.status === "RESULT_SUBMITTED" && (
                       <>
                         <Button
                           disabled={busy}
@@ -297,7 +297,7 @@ export function MatchRoom({ id }: { id: string }) {
                             void act("/matches/" + id + "/confirm")
                           }
                         >
-                          Confirm result
+                          Accept proof for admin review
                         </Button>
                         <Button
                           variant="outline"

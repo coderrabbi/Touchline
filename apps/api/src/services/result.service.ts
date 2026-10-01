@@ -264,12 +264,7 @@ export async function confirm(userId: string, id: string) {
         reviewedAt: new Date(),
       },
     });
-    return official(tx, id, {
-      homeScore: s.homeScore,
-      awayScore: s.awayScore,
-      homePenalties: s.homePenalties,
-      awayPenalties: s.awayPenalties,
-    });
+    return { id, status: "RESULT_SUBMITTED", awaitingAdminReview: true };
   });
 }
 export async function dispute(
@@ -343,7 +338,7 @@ export async function resolve(
         "This match cannot be changed through result review.",
       );
     const submission = await tx.matchResultSubmission.findFirst({
-      where: { matchId: id, status: { in: ["PENDING", "DISPUTED"] } },
+      where: { matchId: id, status: { in: ["PENDING", "CONFIRMED", "DISPUTED"] } },
       orderBy: { createdAt: "desc" },
     });
     if (submission)

@@ -92,7 +92,7 @@ async function issueSession(
       familyId,
       tokenHash: hashToken(refreshToken),
       csrfHash: hashToken(csrfToken),
-      expiresAt: new Date(Date.now() + 7 * 86400000),
+      expiresAt: new Date(Date.now() + 86400000),
     },
   });
   return {
@@ -163,6 +163,9 @@ export async function refresh(raw: string) {
       previous.user.tokenVersion !== claims.version
     )
       return { invalid: true } as const;
+    const first = await tx.refreshToken.findFirst({where:{familyId:claims.familyId},orderBy:{createdAt:'asc'},select:{createdAt:true}});
+    const sessionExpiresAt = new Date(Math.min(previous.expiresAt.getTime(), (first?.createdAt ?? previous.createdAt).getTime() + 86400000));
+    if (sessionExpiresAt <= new Date()) return { invalid: true } as const;
     const changed = await tx.refreshToken.updateMany({
       where: { id: previous.id, revokedAt: null },
       data: { revokedAt: new Date(), replacedById: id },
@@ -181,7 +184,7 @@ export async function refresh(raw: string) {
         familyId: claims.familyId,
         tokenHash: hashToken(newRaw),
         csrfHash: hashToken(csrfFor(claims.familyId)),
-        expiresAt: new Date(Date.now() + 7 * 86400000),
+        expiresAt: sessionExpiresAt,
       },
     });
     return { ok: true } as const;
