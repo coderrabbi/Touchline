@@ -19,6 +19,12 @@ export class ApiError extends Error {
 }
 
 async function decode<T>(res: Response): Promise<ApiResponse<T>> {
+  if (res.status === 429) {
+    const retryAfter = res.headers.get('retry-after');
+    const seconds = retryAfter ? (/^\d+$/.test(retryAfter) ? Number(retryAfter) : Math.ceil((Date.parse(retryAfter) - Date.now()) / 1000)) : NaN;
+    const wait = Number.isFinite(seconds) && seconds > 0 ? ` Try again in ${Math.ceil(seconds / 60)} minute(s).` : ' Please wait a few minutes before trying again.';
+    throw new ApiError(429, 'Too many requests.' + wait);
+  }
   const data: ApiResponse<T> | ApiFailure = await res.json().catch(() => ({
     success: false,
     message: "The server returned an invalid response.",

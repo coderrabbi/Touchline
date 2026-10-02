@@ -3,7 +3,7 @@ import {useEffect,useRef,useState} from 'react';
 import Link from 'next/link';
 import {Bell} from 'lucide-react';
 import {useQuery,useQueryClient} from '@tanstack/react-query';
-import {api} from '@/lib/api';
+import {api,ApiError} from '@/lib/api';
 import {notificationTone,prepareNotificationAudio} from '@/lib/notification-sound';
 import type {Notice} from '@/lib/competition';
 export function NotificationBell({userId}:{userId:string}){
@@ -17,7 +17,7 @@ export function NotificationBell({userId}:{userId:string}){
    window.addEventListener('keydown',unlock,{once:true});
    return()=>{window.removeEventListener('pointerdown',unlock);window.removeEventListener('keydown',unlock);};
  },[soundEnabled]);
- const {data,error}=useQuery({queryKey:['notifications',userId],queryFn:()=>api<Notice[]>('/notifications'),refetchInterval:3000,refetchIntervalInBackground:true});
+ const {data,error}=useQuery({queryKey:['notifications',userId],queryFn:()=>api<Notice[]>('/notifications'),refetchInterval:query=>query.state.error instanceof ApiError&&query.state.error.status===429?60000:10000,refetchIntervalInBackground:false,retry:(count,error)=>!(error instanceof ApiError&&error.status===429)&&count<1});
  useEffect(()=>{if(!data)return;const latest=data[0];if(previous.current!==undefined&&latest&&latest.id!==previous.current&&!latest.readAt){setToast(latest);if(soundEnabled)void notificationTone()}previous.current=latest?.id||null},[data,soundEnabled]);
  useEffect(()=>{if(!toast)return;const timer=setTimeout(()=>setToast(null),6000);return()=>clearTimeout(timer)},[toast]);
  const count=data?.filter(n=>!n.readAt).length||0;
