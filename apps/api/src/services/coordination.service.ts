@@ -12,7 +12,6 @@ export async function coordinate(id:string,userId:string,admin:boolean,input:{ac
  if(input.action==='ready'){
   if(!participant)throw new AppError(403,'Only the opponents can check in.');
   if(!m.homeId||!m.awayId)throw new AppError(409,'Both opponents must be assigned.');
-  if(m.scheduledAt&&Date.now()<m.scheduledAt.getTime()-30*60000)throw new AppError(409,'Check-in opens 30 minutes before the scheduled match.');
   const key=m.home?.userId===userId?'homeReadyAt':'awayReadyAt';if(m.coordination?.[key])return m.coordination;data={[key]:new Date()};
  }else if(input.action==='lobby'){data={lobbyDetails:input.text||null};}
  else if(input.action==='no-show'){
