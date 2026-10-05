@@ -22,20 +22,22 @@ import { QueryState } from "@/components/query-state";
 import { human } from "@/lib/catalog";
 
 export function MatchRoom({ id }: { id: string }) {
+  const { data: session, isPending: sessionPending } = useQuery({
+    queryKey: ["session"],
+    queryFn: () => api<{ user: SessionUser }>("/auth/me", { anonymous: true }),
+    retry: false,
+  });
   const {
     data: m,
     error,
     isPending,
     refetch,
   } = useQuery({
-    queryKey: ["match", id],
+    queryKey: ["match", id, session?.user.id ?? "guest"],
+    enabled: !sessionPending,
     queryFn: () => api<MatchRecord>("/matches/" + id),
   });
-  const { data: session } = useQuery({
-    queryKey: ["session"],
-    queryFn: () => api<{ user: SessionUser }>("/auth/me", { anonymous: true }),
-    retry: false,
-  });
+
   const [evidence, setEvidence] = useState(""),
     [reason, setReason] = useState(""),
     [message, setMessage] = useState(""),
@@ -145,12 +147,16 @@ export function MatchRoom({ id }: { id: string }) {
               here. Scores only become official after administrator review and
               an administrator decision.
             </p>
-            {m.submissions?.[0] && <section className="dispute-evidence" aria-label="Result evidence">
-              <div className="actions">
-                {m.submissions[0].evidenceId && <EvidenceViewer id={m.submissions[0].evidenceId} label="View submitted evidence"/>}
-                {m.submissions[0].disputeEvidenceId && <EvidenceViewer id={m.submissions[0].disputeEvidenceId} label="View opponent’s evidence"/>}
-              </div>
-              {m.submissions[0].disputeReason && <div className="feedback"><div><strong>Opponent’s dispute reason</strong><p>{m.submissions[0].disputeReason}</p></div></div>}
+            {(participant || user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') && <section className="dispute-evidence" aria-label="Result evidence">
+              <h3>Match evidence</h3>
+              {m.submissions?.some(s=>s.evidenceId||s.disputeEvidenceId) ? m.submissions.map((submission,index)=><div key={submission.id} style={{marginTop:12}}>
+                <p className="small muted">Submission {m.submissions!.length-index} · {human(submission.status)}</p>
+                <div className="actions">
+                  {submission.evidenceId && <EvidenceViewer id={submission.evidenceId} label="View submitted evidence"/>}
+                  {submission.disputeEvidenceId && <EvidenceViewer id={submission.disputeEvidenceId} label="View opponent's evidence"/>}
+                </div>
+                {submission.disputeReason && <p className="small">Dispute reason: {submission.disputeReason}</p>}
+              </div>) : <p className="small muted">No evidence is attached to this match result.</p>}
             </section>}
             <p className="small muted">Both players and administrators can view the evidence. Disputing adds a second screenshot without deleting the original. An administrator reviews and publishes the final result.</p><Feedback message={message} />
             <Feedback message={failure} error />

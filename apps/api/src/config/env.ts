@@ -10,6 +10,7 @@ const schema = z.object({
   JWT_ACCESS_SECRET: z.string().min(48),
   JWT_REFRESH_SECRET: z.string().min(48),
   FRONTEND_URL: z.url(),
+  ADDITIONAL_FRONTEND_ORIGINS: z.string().default(""),
   BACKEND_URL: z.url(),
   EMAIL_MODE: z.enum(["development", "smtp", "resend"]).default("development"),
   RESEND_API_KEY: z.string().optional(),
@@ -50,3 +51,9 @@ if (env.NODE_ENV === "production") {
     throw new Error("Resend requires RESEND_API_KEY");
   }
 }
+
+export const allowedFrontendOrigins = [new URL(env.FRONTEND_URL).origin, ...env.ADDITIONAL_FRONTEND_ORIGINS.split(',').map(value=>value.trim()).filter(Boolean).map(value=>{
+  const url=new URL(value);
+  if(url.origin!==value || (url.protocol!=='https:' && !(url.protocol==='http:' && ['localhost','127.0.0.1'].includes(url.hostname)))) throw new Error('Additional frontend origins must be HTTPS or local development origins');
+  return url.origin;
+})];

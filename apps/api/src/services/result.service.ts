@@ -341,6 +341,11 @@ export async function resolve(
       where: { matchId: id, status: { in: ["PENDING", "CONFIRMED", "DISPUTED"] } },
       orderBy: { createdAt: "desc" },
     });
+    if (score.evidenceId) {
+      const evidence = await tx.upload.findUnique({where:{id:score.evidenceId}});
+      if (!evidence || evidence.ownerId !== actorId || evidence.purpose !== 'MATCH_EVIDENCE') throw new AppError(403,'Use your own match screenshot.');
+      await tx.matchResultSubmission.create({data:{matchId:id,submittedById:actorId,homeScore:score.homeScore,awayScore:score.awayScore,homePenalties:score.homePenalties,awayPenalties:score.awayPenalties,evidenceId:score.evidenceId,status:'RESOLVED',reviewedById:actorId,reviewedAt:new Date(),decisionReason:reason}});
+    }
     if (submission)
       await tx.matchResultSubmission.update({
         where: { id: submission.id },

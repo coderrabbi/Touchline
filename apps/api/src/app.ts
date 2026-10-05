@@ -11,7 +11,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import { randomUUID } from "node:crypto";
 import { rateLimit } from "express-rate-limit";
-import { env } from "./config/env.js";
+import { env, allowedFrontendOrigins } from "./config/env.js";
 import { prisma } from "./config/prisma.js";
 import { authRoutes } from "./routes/auth.routes.js";
 import { userRoutes } from "./routes/user.routes.js";
@@ -32,7 +32,7 @@ export function createApp() {
   app.use(createHelmetMiddleware());
   app.use(
     cors({
-      origin: env.FRONTEND_URL,
+      origin: allowedFrontendOrigins,
       credentials: true,
       methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
       allowedHeaders: ["Content-Type", "X-CSRF-Token"],
